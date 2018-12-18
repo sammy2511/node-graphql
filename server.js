@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const  cors =  require('cors');
 const SECRET = 'aslkdjlkaj10830912039jlkoaiuwerasdjflkasd';
 const webToken = require('jsonwebtoken');
+const User = require('./model/user');
 
 
 var app = express();
@@ -16,13 +17,32 @@ mongoose.connection.once('open', () => {
     console.log('conneted to database');
 });
 
+const isLogout = async (email) => {
+  const user = await User.findOne({ email : email});
+  console.log(user)
+  if(user.token === null){
+    console.log('inside if')
+    return true;
+  }
+
+  return false;
+}
+
 //authentication middleware
 const authenticate = async (req) => {
     const token = req.headers.authorization;
     try {
       const { user } = await webToken.verify(token, SECRET);
-      console.log(user);
-      req.user = user;
+      
+      const dbUser = await User.findOne({email: user.email});
+
+      if(dbUser.token !== null){
+        req.user = user;
+      }
+      else{
+        throw new Error('User logged out')
+      }
+      
     } catch (err) {
       console.log(err);
     }

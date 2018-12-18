@@ -29,7 +29,8 @@ const NoteType = new GraphQLObjectType({
 const UserType = new GraphQLObjectType({
     name: 'User',
     fields: ( ) => ({
-        email: { type: GraphQLString }
+        email: { type: GraphQLString },
+        token : { type: GraphQLString }
     })
 });
 
@@ -38,6 +39,7 @@ const RootQuery = new GraphQLObjectType({
     fields: {
         note: {
             type: NoteType,
+            description:'Get Single note of Logged in User',
             args: { id: { type: GraphQLID } },
             resolve(parent, args,context){
 
@@ -50,6 +52,7 @@ const RootQuery = new GraphQLObjectType({
         },
         notes: {
             type: new GraphQLList(NoteType),
+            description: 'Get all Notes of Logged in user',
             resolve(parent, args,context){
 
                 
@@ -58,6 +61,19 @@ const RootQuery = new GraphQLObjectType({
                 }
 
                 return Note.find({isActive:true,createdBy: context.user.id});
+            }
+        },
+
+        me: {
+            type: UserType,
+            description: 'Get Logged in User',
+            resolve(parent, args ,context){
+                
+                if(!context.user){
+                    return new Error('User not authorized');
+                }
+
+                return context.user;
             }
         }
     }
@@ -68,6 +84,7 @@ const Mutation = new GraphQLObjectType({
     fields: {
         addNote: {
             type: NoteType,
+            description:'Add new note',
             args: {
                 text: { type: GraphQLString },
             },
@@ -89,6 +106,7 @@ const Mutation = new GraphQLObjectType({
         },
         updateNote: {
             type: NoteType,
+            description: 'Update existing note by Id',
             args: {
                 id: { type : GraphQLID },
                 text: { type: GraphQLString },
@@ -110,6 +128,7 @@ const Mutation = new GraphQLObjectType({
         },
         deleteNote: {
             type: NoteType,
+            description: 'Delete note by Id',
             args: {
                 id: { type : GraphQLID }
             },
@@ -124,6 +143,7 @@ const Mutation = new GraphQLObjectType({
 
         signup: {
             type : UserType,
+            description:'Signs up a new user by takin email and password',
             args : {
                 email : { type : GraphQLString },
                 password : { type : GraphQLString }
@@ -143,6 +163,7 @@ const Mutation = new GraphQLObjectType({
 
         login: {
             type: UserType,
+            description: 'Login user and returns a autorization token',
             args : {
                 email : { type : GraphQLString },
                 password : { type : GraphQLString }
@@ -177,8 +198,25 @@ const Mutation = new GraphQLObjectType({
                       expiresIn: '1h',
                     },
                   );
+
+                  user.token = token;
+
                   
-              return token;
+                  
+              return user.save();
+            }
+        },
+
+        logout:{
+
+            type: UserType,
+            description: 'Delete Auth token',
+            resolve: async (parent,args,context)=>{
+
+                return User.findOneAndUpdate({
+                    email: context.user.email
+                },{$set:{token:null}});
+
             }
         }
         
